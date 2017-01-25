@@ -1,6 +1,10 @@
 import discord
 import asyncio
 import key
+import logging
+
+asyncio.get_event_loop().set_debug(True)
+logging.basicConfig(filename='log.log', filemode='w', level=logging.DEBUG)
 
 import discordmarkov as dm
 from load_skype import SM as skype_markov
@@ -18,13 +22,16 @@ upd_date = dt.datetime.now()
 
 def shutdown_voice():
   global voice_client, player
+  print("shutting down voice")
   if voice_client is not None:
     loop = asyncio.get_event_loop()
+    print("disconnecting client")
     asyncio.run_coroutine_threadsafe(voice_client.disconnect(), loop)
     # loop.close()
     #  voice_client.disconnect()
     voice_client = None
   player = None
+  print("client disconnected")
   
 @client.event
 async def on_ready():
@@ -34,10 +41,12 @@ async def on_ready():
     print(client.user.id)
     print('------')
     
+    i = 0
     upd_date = dt.datetime.now()
     for channel in client.get_all_channels():
       async for log in client.logs_from(channel, limit=9999999):
         discord_markov.update(log.author.id, log.content)
+        i += 1
     print('done reading log')
 @client.event
 async def on_message(message):
@@ -52,8 +61,11 @@ async def on_message(message):
             await lock
             try:
               voice_client = await client.join_voice_channel(member_voice_channel)
+              print("joined voice channel")
               player = await voice_client.create_ytdl_player('https://www.youtube.com/watch?v=qnIpG7E3eOQ', after= shutdown_voice)
+              print("ytdl player created")
               player.start()
+              print("player started")
             finally:
               lock.release()
       elif 'stop' in message.content:
